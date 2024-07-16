@@ -1,6 +1,7 @@
 import {
   AddIcon,
   Button,
+  ButtonIcon,
   CloseIcon,
   Fab,
   FormControl,
@@ -20,6 +21,10 @@ import {
   SelectItem,
   Spinner,
   StatusBar,
+  Toast,
+  ToastTitle,
+  ToastDescription,
+  VStack,
 } from "@gluestack-ui/themed";
 import { Box } from "@gluestack-ui/themed";
 import { ButtonText } from "@gluestack-ui/themed";
@@ -27,12 +32,17 @@ import { Text } from "@gluestack-ui/themed";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import {
+  CheckIcon,
   ChevronDownIcon,
+  CircleEllipsisIcon,
+  Delete,
+  EditIcon,
   GlobeIcon,
   LogOut,
   PaintBucket,
   PuzzleIcon,
   SettingsIcon,
+  TrashIcon,
 } from "lucide-react-native";
 import { Alert, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -51,7 +61,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Task, TaskList } from "@/types/task";
 import { addTaskSchema, AddTaskSchema } from "@/schema/addTaskSchema";
-import { postRequest } from "@/helper/axios";
+import { deleteRequest, postRequest, putRequest } from "@/helper/axios";
 import { Select } from "@gluestack-ui/themed";
 import { SelectTrigger } from "@gluestack-ui/themed";
 import { SelectPortal } from "@gluestack-ui/themed";
@@ -61,12 +71,16 @@ import { Menu } from "@gluestack-ui/themed";
 import { MenuItem } from "@gluestack-ui/themed";
 import { MenuItemLabel } from "@gluestack-ui/themed";
 import { useLoginHomepage } from "@/hooks/useCheckLogin";
+import { useToast } from "@gluestack-ui/themed";
 
 export default function InProgressScreen() {
   const [name, setName] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [showModalAdd, setShowModalAdd] = useState(false);
+  const [showModalEdit, setShowModalEdit] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const toast = useToast();
 
   const { data: tasksData, isLoading } = useSWR<TaskList>(
     `/tasks?status=${statusFilter || ""}`,
@@ -77,6 +91,15 @@ export default function InProgressScreen() {
     handleSubmit,
     formState: { errors },
     reset,
+  } = useForm<AddTaskSchema>({
+    resolver: zodResolver(addTaskSchema),
+  });
+
+  const {
+    control: controlEdit,
+    handleSubmit: handleSubmitEdit,
+    formState: { errors: errorsEdit },
+    reset: resetEdit,
   } = useForm<AddTaskSchema>({
     resolver: zodResolver(addTaskSchema),
   });
@@ -106,16 +129,48 @@ export default function InProgressScreen() {
     useLoginHomepage();
   }, []);
 
-  const onSubmit = async (data: AddTaskSchema) => {
-    console.log(data);
+  const openEditModal = (task: Task) => {
+    setSelectedTask(task);
+    setShowModalEdit(true);
+    resetEdit({
+      title: task.title,
+      description: task.description,
+      due_date: task.due_date,
+    });
+  };
 
+  const onSubmit = async (data: AddTaskSchema) => {
     const response = await postRequest("/tasks/create", data);
+
+    const result = await response.data;
 
     if (response.status === 201) {
       mutate(`/tasks?status=${statusFilter || ""}`);
-      Alert.alert("Success", "Task created successfully");
+      toast.show({
+        placement: "bottom",
+        duration: 3000,
+        render: () => (
+          <Toast variant="accent" action="success">
+            <VStack gap={4}>
+              <ToastTitle>Success</ToastTitle>
+              <ToastDescription>{result.message}</ToastDescription>
+            </VStack>
+          </Toast>
+        ),
+      });
     } else {
-      Alert.alert("Error", "Failed to create task");
+      toast.show({
+        placement: "bottom",
+        duration: 3000,
+        render: () => (
+          <Toast variant="accent" action="error">
+            <VStack gap={4}>
+              <ToastTitle>Error</ToastTitle>
+              <ToastDescription>{result.message}</ToastDescription>
+            </VStack>
+          </Toast>
+        ),
+      });
     }
     setShowModalAdd(false);
     reset();
@@ -123,6 +178,118 @@ export default function InProgressScreen() {
 
   const handleStatusChange = (status: string) => {
     setStatusFilter(status);
+  };
+
+  const onSubmitEdit = async (data: AddTaskSchema) => {
+    const response = await putRequest(
+      `/tasks/update/${selectedTask?.task_id}`,
+      data
+    );
+
+    const result = await response.data;
+
+    if (response.status === 200) {
+      mutate(`/tasks?status=${statusFilter || ""}`);
+      toast.show({
+        placement: "bottom",
+        duration: 3000,
+        render: () => (
+          <Toast variant="accent" action="success">
+            <VStack gap={4}>
+              <ToastTitle>Success</ToastTitle>
+              <ToastDescription>{result.message}</ToastDescription>
+            </VStack>
+          </Toast>
+        ),
+      });
+    } else {
+      toast.show({
+        placement: "bottom",
+        duration: 3000,
+        render: () => (
+          <Toast variant="accent" action="error">
+            <VStack gap={4}>
+              <ToastTitle>Error</ToastTitle>
+              <ToastDescription>{result.message}</ToastDescription>
+            </VStack>
+          </Toast>
+        ),
+      });
+    }
+    setShowModalEdit(false);
+    resetEdit();
+  };
+
+  const handlePutStatus = async (task_id: string, status: string) => {
+    const response = await putRequest(`/tasks/update-status/${task_id}`, {
+      status,
+    });
+
+    const result = await response.data;
+
+    if (response.status === 200) {
+      mutate(`/tasks?status=${statusFilter || ""}`);
+      toast.show({
+        placement: "bottom",
+        duration: 3000,
+        render: () => (
+          <Toast variant="accent" action="success">
+            <VStack gap={4}>
+              <ToastTitle>Success</ToastTitle>
+              <ToastDescription>{result.message}</ToastDescription>
+            </VStack>
+          </Toast>
+        ),
+      });
+    } else {
+      toast.show({
+        placement: "bottom",
+        duration: 3000,
+        render: () => (
+          <Toast variant="accent" action="error">
+            <VStack gap={4}>
+              <ToastTitle>Error</ToastTitle>
+              <ToastDescription>{result.message}</ToastDescription>
+            </VStack>
+          </Toast>
+        ),
+      });
+    }
+  };
+
+  const handleDeleteTask = async (task_id: string) => {
+    const response = await deleteRequest(`/tasks/delete/${task_id}`);
+
+    const result = await response.data;
+
+    if (response.status === 200) {
+      mutate(`/tasks?status=${statusFilter || ""}`);
+      toast.show({
+        placement: "bottom",
+        duration: 3000,
+        render: () => (
+          <Toast variant="accent" action="success">
+            <VStack gap={4}>
+              <ToastTitle>Success</ToastTitle>
+              <ToastDescription>{result.message}</ToastDescription>
+            </VStack>
+          </Toast>
+        ),
+      });
+    } else {
+      toast.show({
+        placement: "bottom",
+        duration: 3000,
+        render: () => (
+          <Toast variant="accent" action="error">
+            <VStack gap={4}>
+              <ToastTitle>Error</ToastTitle>
+              <ToastDescription>{result.message}</ToastDescription>
+            </VStack>
+          </Toast>
+        ),
+      });
+    }
   };
 
   return (
@@ -191,60 +358,66 @@ export default function InProgressScreen() {
                 variant="filled"
                 backgroundColor="#F1F4FF"
                 rounded={10}
+                justifyContent="space-between"
+                flexDirection="row"
+                alignItems="center"
               >
-                <Heading size="md" mb={1} fontFamily="Poppins_600SemiBold">
-                  {task.title}
-                </Heading>
-                <Text size="sm" fontFamily="Poppins_600SemiBold">
-                  {task.description}
-                </Text>
-                <Text size="sm" fontFamily="Poppins_400Regular">
-                  {task.due_date}
-                </Text>
+                <Box>
+                  <Heading size="md" mb={1} fontFamily="Poppins_600SemiBold">
+                    {task.title}
+                  </Heading>
+                  <Text size="sm" fontFamily="Poppins_600SemiBold">
+                    {task.description}
+                  </Text>
+                  <Text size="sm" fontFamily="Poppins_400Regular">
+                    {task.due_date}
+                  </Text>
+                </Box>
+                {task.status !== "done" ? (
+                  <Menu
+                    width="$1/2"
+                    offset={5}
+                    placement="bottom"
+                    trigger={({ ...triggerProps }) => {
+                      return (
+                        <CircleEllipsisIcon
+                          size={28}
+                          color="#1F41BB"
+                          {...triggerProps}
+                        />
+                      );
+                    }}
+                  >
+                    <MenuItem
+                      textValue="Done"
+                      onPress={() => handlePutStatus(task.task_id, "done")}
+                    >
+                      <Icon as={CheckIcon} size="sm" mr={4} />
+                      <MenuItemLabel size="sm" fontFamily="Poppins_400Regular">
+                        Done
+                      </MenuItemLabel>
+                    </MenuItem>
+                    <MenuItem
+                      textValue="Edit"
+                      onPress={() => openEditModal(task)}
+                    >
+                      <Icon as={EditIcon} size="sm" mr={4} />
+                      <MenuItemLabel size="sm" fontFamily="Poppins_400Regular">
+                        Edit
+                      </MenuItemLabel>
+                    </MenuItem>
+                    <MenuItem
+                      textValue="Done"
+                      onPress={() => handleDeleteTask(task.task_id)}
+                    >
+                      <Icon as={TrashIcon} size="sm" mr={4} />
+                      <MenuItemLabel size="sm" fontFamily="Poppins_400Regular">
+                        Delete
+                      </MenuItemLabel>
+                    </MenuItem>
+                  </Menu>
+                ) : null}
               </Card>
-
-              <Menu
-                offset={5}
-                placement="bottom"
-                trigger={({ ...triggerProps }) => {
-                  return (
-                    <Button {...triggerProps}>
-                      <ButtonText>Menu</ButtonText>
-                    </Button>
-                  );
-                }}
-              >
-                <MenuItem key="Community" textValue="Community">
-                  <Icon as={GlobeIcon} size="sm" />
-                  <MenuItemLabel size="sm" fontFamily="Poppins_400Regular">
-                    Done
-                  </MenuItemLabel>
-                </MenuItem>
-                <MenuItem key="Plugins" textValue="Plugins">
-                  {/* PuzzleIcon is imported from 'lucide-react-native' */}
-                  <Icon as={PuzzleIcon} size="sm" />
-                  <MenuItemLabel size="sm" fontFamily="Poppins_400Regular">
-                    Edit
-                  </MenuItemLabel>
-                </MenuItem>
-                <MenuItem key="Theme" textValue="Theme">
-                  {/* PaintBucket is imported from 'lucide-react-native' */}
-                  <Icon as={PaintBucket} size="sm" />
-                  <MenuItemLabel size="sm" fontFamily="Poppins_400Regular">
-                    Delete
-                  </MenuItemLabel>
-                </MenuItem>
-                <MenuItem key="Settings" textValue="Settings">
-                  <Icon as={SettingsIcon} size="sm" />
-                  <MenuItemLabel size="sm" fontFamily="Poppins_400Regular">
-                    Settings
-                  </MenuItemLabel>
-                </MenuItem>
-                <MenuItem key="Add account" textValue="Add account">
-                  <Icon as={AddIcon} size="sm" />
-                  <MenuItemLabel size="sm">Add account</MenuItemLabel>
-                </MenuItem>
-              </Menu>
             </Box>
           ))
         )}
@@ -395,6 +568,148 @@ export default function InProgressScreen() {
               bgColor="#1F41BB"
             >
               <ButtonText fontFamily="Poppins_400Regular">Add Task</ButtonText>
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal
+        isOpen={showModalEdit}
+        onClose={() => {
+          setShowModalEdit(false);
+          resetEdit(); // Reset form jika modal ditutup
+        }}
+      >
+        <ModalBackdrop />
+        <ModalContent backgroundColor="white">
+          <ModalHeader>
+            <Heading size="md" fontFamily="Poppins_600SemiBold">
+              Edit Task
+            </Heading>
+            <ModalCloseButton>
+              <Icon as={CloseIcon} size="md" />
+            </ModalCloseButton>
+          </ModalHeader>
+          <ModalBody>
+            <FormControl isInvalid={!!errorsEdit.title}>
+              <Controller
+                control={controlEdit}
+                name="title"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <>
+                    <Input rounded={10}>
+                      <InputField
+                        placeholder="Title"
+                        type="text"
+                        fontFamily="Poppins_400Regular"
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                      />
+                    </Input>
+                    <FormControlHelperText>
+                      {errorsEdit.title && (
+                        <Text
+                          color="red"
+                          fontFamily="Poppins_400Regular"
+                          fontSize={12}
+                        >
+                          {errorsEdit.title.message}
+                        </Text>
+                      )}
+                    </FormControlHelperText>
+                  </>
+                )}
+              />
+            </FormControl>
+
+            <FormControl isInvalid={!!errorsEdit.description}>
+              <Controller
+                control={controlEdit}
+                name="description"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <>
+                    <Input rounded={10}>
+                      <InputField
+                        placeholder="Description"
+                        type="text"
+                        fontFamily="Poppins_400Regular"
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                      />
+                    </Input>
+                    <FormControlHelperText>
+                      {errorsEdit.description && (
+                        <Text
+                          color="red"
+                          fontFamily="Poppins_400Regular"
+                          fontSize={12}
+                        >
+                          {errorsEdit.description.message}
+                        </Text>
+                      )}
+                    </FormControlHelperText>
+                  </>
+                )}
+              />
+            </FormControl>
+
+            <FormControl isInvalid={!!errorsEdit.due_date}>
+              <Controller
+                control={controlEdit}
+                name="due_date"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <>
+                    <Input rounded={10}>
+                      <InputField
+                        placeholder="Due Date"
+                        fontFamily="Poppins_400Regular"
+                        onBlur={onBlur}
+                        onChangeText={onChange}
+                        value={value}
+                      />
+                    </Input>
+                    <FormControlHelperText>
+                      {errorsEdit.due_date && (
+                        <Text
+                          color="red"
+                          fontFamily="Poppins_400Regular"
+                          fontSize={12}
+                        >
+                          {errorsEdit.due_date.message}
+                        </Text>
+                      )}
+                    </FormControlHelperText>
+                  </>
+                )}
+              />
+            </FormControl>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="outline"
+              size="md"
+              action="secondary"
+              onPress={() => {
+                setShowModalEdit(false);
+                resetEdit(); // Reset form jika modal ditutup
+              }}
+              rounded={10}
+              marginRight={8}
+            >
+              <ButtonText fontFamily="Poppins_400Regular">Cancel</ButtonText>
+            </Button>
+            <Button
+              size="md"
+              action="positive"
+              onPress={handleSubmitEdit(onSubmitEdit)}
+              rounded={10}
+              bgColor="#1F41BB"
+            >
+              <ButtonText fontFamily="Poppins_400Regular">
+                Save Changes
+              </ButtonText>
             </Button>
           </ModalFooter>
         </ModalContent>
