@@ -23,7 +23,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { InputSlot } from "@gluestack-ui/themed";
 import { InputIcon } from "@gluestack-ui/themed";
 import { EyeIcon, EyeOffIcon } from "lucide-react-native";
@@ -65,12 +64,15 @@ export default function LoginScreen() {
     setIsLoading(false);
 
     if (response.ok) {
+      const expiryTime = Date.now() + 3600000; // 1 hour in milliseconds
       await AsyncStorage.setItem("token", result.token);
+      await AsyncStorage.setItem("name", result.name);
+      await AsyncStorage.setItem("tokenExpiry", expiryTime.toString());
       toast.show({
         placement: "bottom",
         duration: 3000,
         render: () => (
-          <Toast variant="solid" action="success">
+          <Toast variant="accent" action="success">
             <VStack gap={4}>
               <ToastTitle>Success</ToastTitle>
               <ToastDescription>{result.message}</ToastDescription>
@@ -78,7 +80,7 @@ export default function LoginScreen() {
           </Toast>
         ),
       });
-      router.push("/(homepage)/in_progress");
+      router.push("/(homepage)");
     } else {
       toast.show({
         placement: "bottom",
@@ -159,7 +161,13 @@ export default function LoginScreen() {
                 </Input>
                 <FormControlHelperText>
                   {errors.email && (
-                    <Text color="red">{errors.email.message}</Text>
+                    <Text
+                      color="red"
+                      fontFamily="Poppins_400Regular"
+                      fontSize={12}
+                    >
+                      {errors.email.message}
+                    </Text>
                   )}
                 </FormControlHelperText>
               </>
@@ -181,7 +189,6 @@ export default function LoginScreen() {
                   py={3}
                   h={64}
                   bgColor="#F1F4FF"
-                  mt={12}
                 >
                   <InputField
                     placeholder="Password"
@@ -200,7 +207,13 @@ export default function LoginScreen() {
                 </Input>
                 <FormControlHelperText>
                   {errors.password && (
-                    <Text color="red">{errors.password.message}</Text>
+                    <Text
+                      color="red"
+                      fontFamily="Poppins_400Regular"
+                      fontSize={12}
+                    >
+                      {errors.password.message}
+                    </Text>
                   )}
                 </FormControlHelperText>
               </>

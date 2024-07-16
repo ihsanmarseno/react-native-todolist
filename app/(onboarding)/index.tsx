@@ -5,7 +5,6 @@ import {
   Box,
   Button,
   ButtonText,
-  HStack,
   StatusBar,
   Text,
   VStack,

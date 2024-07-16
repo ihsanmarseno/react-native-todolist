@@ -35,7 +35,7 @@ export default function RootLayout() {
 
   return (
     <GluestackUIProvider config={config}>
-      <Stack>
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
       </Stack>

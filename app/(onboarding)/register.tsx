@@ -62,7 +62,7 @@ export default function RegisterScreen() {
         placement: "bottom",
         duration: 3000,
         render: () => (
-          <Toast variant="solid" action="success">
+          <Toast variant="accent" action="success">
             <VStack gap={4}>
               <ToastTitle>Success</ToastTitle>
               <ToastDescription>Registration successful.</ToastDescription>
@@ -163,7 +163,13 @@ export default function RegisterScreen() {
                 </Input>
                 <FormControlHelperText>
                   {errors.email && (
-                    <Text color="red">{errors.email.message}</Text>
+                    <Text
+                      color="red"
+                      fontFamily="Poppins_400Regular"
+                      fontSize={12}
+                    >
+                      {errors.email.message}
+                    </Text>
                   )}
                 </FormControlHelperText>
               </>
@@ -184,7 +190,6 @@ export default function RegisterScreen() {
                   px={4}
                   py={3}
                   h={64}
-                  mt={12}
                   bgColor="#F1F4FF"
                 >
                   <InputField
@@ -199,7 +204,13 @@ export default function RegisterScreen() {
                 </Input>
                 <FormControlHelperText>
                   {errors.username && (
-                    <Text color="red">{errors.username.message}</Text>
+                    <Text
+                      color="red"
+                      fontFamily="Poppins_400Regular"
+                      fontSize={12}
+                    >
+                      {errors.username.message}
+                    </Text>
                   )}
                 </FormControlHelperText>
               </>
@@ -220,7 +231,6 @@ export default function RegisterScreen() {
                   px={4}
                   py={3}
                   h={64}
-                  mt={12}
                   bgColor="#F1F4FF"
                 >
                   <InputField
@@ -240,7 +250,13 @@ export default function RegisterScreen() {
                 </Input>
                 <FormControlHelperText>
                   {errors.password && (
-                    <Text color="red">{errors.password.message}</Text>
+                    <Text
+                      color="red"
+                      fontFamily="Poppins_400Regular"
+                      fontSize={12}
+                    >
+                      {errors.password.message}
+                    </Text>
                   )}
                 </FormControlHelperText>
               </>
